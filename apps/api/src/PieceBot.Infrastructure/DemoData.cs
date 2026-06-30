@@ -228,4 +228,34 @@ internal static class DemoData
             WhatsappMessageId = "wamid.fff"
         }
     ];
+
+    public static Tenant Tenant() => new()
+    {
+        Id = TenantId,
+        TenantId = TenantId,
+        Name = "Cabinet Mvogo & Associés",
+        Country = "CM",
+        Currency = "XAF",
+        VatRate = 19.25m,
+        WhatsappPhoneNumberId = "1234567890",
+        WhatsappBusinessAccountId = "9876543210",
+        SubscriptionStatus = SubscriptionStatus.Trialing,
+        SubscriptionPlan = SubscriptionPlan.Standard,
+        StripeCustomerId = null,
+        TrialEndsAt = DateTimeOffset.Parse("2026-07-13T00:00:00Z"),
+        CreatedAt = DateTimeOffset.Parse("2026-06-29T10:00:00Z"),
+        Owner = new TenantOwner
+        {
+            UserId = "clerk_user_id",
+            Email = "jean@cabinet-mvogo.cm",
+            FullName = "Jean Mvogo"
+        },
+        Settings = new TenantSettings
+        {
+            Language = "fr",
+            Timezone = "Africa/Douala",
+            MonthlyReminderDay = 5,
+            MonthlyReminderHour = 9
+        }
+    };
 }

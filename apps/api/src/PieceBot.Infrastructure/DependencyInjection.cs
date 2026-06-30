@@ -16,6 +16,7 @@ public static class DependencyInjection
         // Singleton pour conserver l'état entre requêtes tant que c'est en mémoire.
         services.AddSingleton<IEndClientRepository, InMemoryEndClientRepository>();
         services.AddSingleton<IPieceRepository, InMemoryPieceRepository>();
+        services.AddSingleton<ITenantRepository, InMemoryTenantRepository>();
         return services;
     }
 }
