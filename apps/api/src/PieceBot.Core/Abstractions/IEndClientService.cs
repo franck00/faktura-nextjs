@@ -26,4 +26,15 @@ public interface IEndClientService
         string tenantId,
         string id,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Crée en masse des clients depuis un contenu CSV (spec §6.3). Colonnes
+    /// attendues : <c>companyName, contactName, whatsappNumber, email, siret,
+    /// vatNumber, tags, activeMonth</c> (les 3 premières sont requises ; <c>tags</c>
+    /// séparés par <c>;</c>). Les lignes invalides sont rapportées sans bloquer le reste.
+    /// </summary>
+    Task<ImportCsvResult> ImportCsvAsync(
+        string tenantId,
+        string csvContent,
+        CancellationToken cancellationToken = default);
 }

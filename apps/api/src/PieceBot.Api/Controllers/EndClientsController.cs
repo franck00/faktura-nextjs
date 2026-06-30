@@ -119,4 +119,29 @@ public sealed class EndClientsController : ControllerBase
         var deleted = await _service.DeleteAsync(TenantId, id, cancellationToken);
         return deleted ? NoContent() : NotFound(new { error = "Client introuvable" });
     }
+
+    /// <summary>
+    /// POST /api/endclients/import-csv — création en masse depuis un CSV.
+    /// Accepte un fichier (multipart/form-data) ou le CSV brut dans le corps
+    /// (text/csv). Colonnes : companyName, contactName, whatsappNumber, email,
+    /// siret, vatNumber, tags (séparés par ;), activeMonth.
+    /// </summary>
+    [HttpPost("import-csv")]
+    public async Task<ActionResult<ImportCsvResult>> ImportCsv(CancellationToken cancellationToken)
+    {
+        string csv;
+        if (Request.HasFormContentType && Request.Form.Files.Count > 0)
+        {
+            using var reader = new StreamReader(Request.Form.Files[0].OpenReadStream());
+            csv = await reader.ReadToEndAsync(cancellationToken);
+        }
+        else
+        {
+            using var reader = new StreamReader(Request.Body);
+            csv = await reader.ReadToEndAsync(cancellationToken);
+        }
+
+        var result = await _service.ImportCsvAsync(TenantId, csv, cancellationToken);
+        return Ok(result);
+    }
 }
