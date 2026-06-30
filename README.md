@@ -1,100 +1,84 @@
-# Faktura — WhatsApp Invoice Bot
+# PieceBot
 
-> Facturation WhatsApp pour les PME africaines. Un message naturel → un PDF pro en < 15 secondes.
+> SaaS B2B qui permet aux cabinets comptables d'Afrique francophone d'**automatiser la collecte mensuelle des pièces justificatives** de leurs clients via WhatsApp, et de les classer automatiquement par client dans un dashboard web.
 
-## Stack
+Flux nominal : photo facture par WhatsApp → webhook → OCR → extraction structurée (montant, date, fournisseur, TVA) → base de données → accusé WhatsApp → dashboard cabinet.
 
-- **Next.js 14** App Router · TypeScript
-- **CSS custom properties** (système de thème light/dark)
-- **Space Grotesk** (Google Fonts)
-- **Azure Functions .NET 8** → backend webhook (à créer séparément)
+---
 
-## Démarrage rapide
+## Architecture (monorepo)
+
+```
+piecebot/
+├── apps/
+│   ├── web/                     # Frontend Next.js 14 (App Router, TS, Tailwind)
+│   │   ├── app/  components/  hooks/  lib/
+│   │   └── package.json
+│   │
+│   └── api/                     # Backend .NET 10 (Web API, Controllers)
+│       ├── PieceBot.slnx
+│       ├── src/
+│       │   ├── PieceBot.Api/            # Couche HTTP : Controllers, Program.cs, DI
+│       │   ├── PieceBot.Core/           # Domaine : entités, enums, interfaces (Abstractions)
+│       │   └── PieceBot.Infrastructure/ # Accès données : repositories (Cosmos à venir)
+│       └── tests/
+│           └── PieceBot.Tests/          # Tests xUnit
+│
+├── .gitignore
+└── README.md
+```
+
+**Séparation des responsabilités (backend) :**
+
+- `PieceBot.Core` — le **domaine** pur (entités `EndClient`, `Piece`, enums, `ExtractedData`) et les **interfaces** de repository. Ne dépend de rien d'externe.
+- `PieceBot.Infrastructure` — les **implémentations** (aujourd'hui en mémoire, demain Cosmos DB / Blob Storage / Document Intelligence). Branchée via `AddInfrastructure()`.
+- `PieceBot.Api` — la couche **HTTP** : Controllers minces qui délèguent à `Core` via les interfaces. CORS ouvert pour `apps/web`.
+
+Le front et le back sont **indépendants** (build et CI séparés).
+
+> ⚠️ Transition en cours : certaines routes API TypeScript (`apps/web/app/api/*`) sont **provisoires** et seront portées vers le backend .NET, puis retirées au profit d'appels HTTP vers `apps/api`.
+
+---
+
+## Démarrer en local
+
+### Frontend (`apps/web`)
 
 ```bash
-# Installer les dépendances
+cd apps/web
 npm install
-
-# Configurer les variables d'environnement
-cp .env.example .env.local
-
-# Lancer en dev
-npm run dev
+cp .env.example .env.local   # remplir les secrets
+npm run dev                  # http://localhost:3000
 ```
 
-→ Ouvrir http://localhost:3000
+### Backend (`apps/api`)
 
-## Structure
+Prérequis : **.NET 10 SDK**.
 
-```
-app/
-  page.tsx               Landing page (/)
-  dashboard/page.tsx     Dashboard utilisateur (/dashboard)
-  demo/page.tsx          Bot prototype interactif (/demo)
-  api/
-    waitlist/route.ts    POST /api/waitlist — inscription waitlist
-    invoices/route.ts    GET/POST /api/invoices
-    webhook/route.ts     GET/POST /api/webhook — Meta WhatsApp
-
-components/
-  landing/               Navbar, Hero, WhatsAppChat, Pricing, Waitlist...
-  dashboard/             Sidebar, StatsGrid, InvoiceTable, LogoUpload...
-  demo/                  PhoneMockup, ScenarioSelector, TechnicalPipeline
-  ui/                    ThemeToggle, LangSwitcher
-
-hooks/
-  useTheme.ts            Dark/light toggle + localStorage
-  useLang.ts             FR/EN switcher + localStorage
-  useWhatsAppAnimation.ts  Animation chat séquentielle (landing)
-  useBotAnimation.ts     Animation bot (page demo)
-
-lib/
-  types.ts               Types TypeScript
-  data.ts                Données statiques (factures, scénarios, commandes WA)
-  i18n.ts                Traductions FR/EN
+```bash
+cd apps/api
+dotnet build PieceBot.slnx
+dotnet test  PieceBot.slnx
+dotnet run --project src/PieceBot.Api   # https://localhost:7xxx
 ```
 
-## Variables d'environnement
+Endpoints disponibles (squelette) :
 
-Copier `.env.example` en `.env.local` et remplir :
+| Méthode | Route | Description |
+|---|---|---|
+| GET | `/health` | Sonde de santé |
+| GET | `/api/endclients?search=` | Liste des clients du cabinet |
+| GET | `/api/endclients/{id}` | Détail d'un client |
 
-| Variable | Description |
-|---|---|
-| `META_API_TOKEN` | Token Meta WhatsApp Cloud API |
-| `META_PHONE_NUMBER_ID` | ID du numéro WhatsApp |
-| `META_WEBHOOK_VERIFY_TOKEN` | Token de vérification webhook |
-| `AZURE_OPENAI_ENDPOINT` | Endpoint Azure OpenAI |
-| `AZURE_OPENAI_KEY` | Clé Azure OpenAI |
-| `AZURE_COSMOS_CONNECTION_STRING` | Cosmos DB serverless |
-| `AZURE_BLOB_CONNECTION_STRING` | Azure Blob Storage (PDFs + logos) |
-| `STRIPE_SECRET_KEY` | Stripe payments |
+---
 
-## Architecture backend (à connecter)
+## Stack cible (spec)
 
-```
-WhatsApp User
-    ↓ message
-Meta Cloud API
-    ↓ POST
-/api/webhook (Next.js)
-    ↓ proxy
-Azure Function (.NET 8)
-    ├── Azure OpenAI GPT-4o mini  → NLP extraction
-    ├── QuestPDF                  → génération PDF
-    ├── Azure Blob Storage        → stockage PDF
-    └── Meta Cloud API            → envoi WhatsApp reply
-```
+- **Backend** : .NET 10 Web API + Azure Functions, Cosmos DB (partition `tenantId`), Blob Storage, Document Intelligence (OCR), Azure OpenAI, Key Vault, App Insights.
+- **Frontend** : Next.js 14 + TypeScript + Tailwind + shadcn/ui + TanStack Query + Zod (Vercel).
+- **Auth** : Clerk · **Paiement** : Stripe · **Emails** : Resend · **WhatsApp** : Meta Cloud API.
 
-## TODOs backend
+## Conventions
 
-- [ ] `app/api/webhook/route.ts` → connecter à Azure Function
-- [ ] `app/api/waitlist/route.ts` → insérer dans Cosmos DB
-- [ ] `app/api/invoices/route.ts` → CRUD Cosmos DB
-- [ ] Auth (NextAuth.js ou Clerk)
-- [ ] Stripe webhooks (abonnement Pro/Business)
-- [ ] Upload logo → Azure Blob Storage
-
-## Design system
-
-Thème via CSS custom properties sur `[data-theme]` (voir `app/globals.css`).
-Couleurs principales : `#25D366` (WhatsApp vert), `#080C14` (dark bg), `#F7F8F5` (light bg).
+- **Gitflow** : `main` (prod) ← `develop` (intégration) ← `feature/…` `fix/…` `chore/…`. PR vers `develop` ; `main` ne reçoit que des releases.
+- Aucun `.env` versionné (secrets via Key Vault / CI). Tous les `*.md` sont ignorés sauf ce `README.md`.

@@ -11,6 +11,18 @@ node_modules/
 out/
 build/
 dist/
+next-env.d.ts
+
+# .NET (backend apps/api) — artefacts de build
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+[Dd]ebug/
+[Rr]elease/
+TestResults/
+*.nupkg
 
 # Environnement et secrets — AUCUN .env ne doit etre versionne (ils contiennent
 # des secrets : AZURE_AD_CLIENT_SECRET, mots de passe DB, cles de stockage...).
