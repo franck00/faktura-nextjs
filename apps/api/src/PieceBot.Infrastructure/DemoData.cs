@@ -57,6 +57,21 @@ internal static class DemoData
             ActiveMonth = CurrentMonth,
             CreatedAt = DateTimeOffset.Parse("2026-03-10T10:00:00Z"),
             LastPieceReceived = DateTimeOffset.Parse("2026-06-10T11:02:00Z")
+        },
+        new()
+        {
+            Id = "client_transport",
+            TenantId = TenantId,
+            CompanyName = "Transports Étoile",
+            ContactName = "Paul Etoga",
+            WhatsappNumber = "+237691445566",
+            Email = "paul@etoile-transport.cm",
+            Siret = "M072020334455",
+            VatNumber = "P456789123",
+            Tags = ["transport", "retard"],
+            ActiveMonth = CurrentMonth,
+            CreatedAt = DateTimeOffset.Parse("2026-05-20T10:00:00Z"),
+            LastPieceReceived = null
         }
     ];
 
