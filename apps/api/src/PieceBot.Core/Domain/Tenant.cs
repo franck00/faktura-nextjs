@@ -30,6 +30,16 @@ public sealed class TenantSettings
     public string Timezone { get; set; } = "Africa/Douala";
     public int MonthlyReminderDay { get; set; } = 5;
     public int MonthlyReminderHour { get; set; } = 9;
+
+    /// <summary>Active/désactive les rappels mensuels au niveau du cabinet (spec §5.6).</summary>
+    public bool RemindersEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Modèle de message de rappel, personnalisable par cabinet (spec §5.6).
+    /// Placeholders supportés : <c>{client}</c> (nom de l'entreprise), <c>{month}</c>.
+    /// </summary>
+    public string ReminderMessageTemplate { get; set; } =
+        "Bonjour {client}, merci de nous transmettre vos pièces justificatives du mois {month} via WhatsApp.";
 }
 
 /// <summary>

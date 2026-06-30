@@ -22,4 +22,7 @@ public sealed class EndClient
     public required string ActiveMonth { get; set; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset? LastPieceReceived { get; set; }
+
+    /// <summary>Si vrai, ce client ne reçoit pas de rappels mensuels (spec §5.6).</summary>
+    public bool RemindersDisabled { get; set; }
 }
