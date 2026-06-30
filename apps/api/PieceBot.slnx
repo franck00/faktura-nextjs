@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PieceBot.Api/PieceBot.Api.csproj" />
+    <Project Path="src/PieceBot.Core/PieceBot.Core.csproj" />
+    <Project Path="src/PieceBot.Infrastructure/PieceBot.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PieceBot.Tests/PieceBot.Tests.csproj" />
+  </Folder>
+</Solution>
