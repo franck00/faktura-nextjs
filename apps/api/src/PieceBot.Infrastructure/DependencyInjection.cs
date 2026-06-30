@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddSingleton<IPieceRepository, InMemoryPieceRepository>();
         services.AddSingleton<ITenantRepository, InMemoryTenantRepository>();
         services.AddSingleton<IMonthlyReminderRepository, InMemoryMonthlyReminderRepository>();
+        services.AddSingleton<IExportJobRepository, InMemoryExportJobRepository>();
         return services;
     }
 }
