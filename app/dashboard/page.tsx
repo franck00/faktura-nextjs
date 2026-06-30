@@ -1,112 +1,238 @@
 'use client';
-import { useState }            from 'react';
-import { Sidebar }             from '@/components/dashboard/Sidebar';
-import { StatsGrid }           from '@/components/dashboard/StatsGrid';
-import { InvoiceTable }        from '@/components/dashboard/InvoiceTable';
-import { LogoUpload }          from '@/components/dashboard/LogoUpload';
-import { WA_COMMANDS }         from '@/lib/data';
 
-function RevenueChart() {
-  const bars = [
-    { label: 'Oct', h: '8%',  color: 'rgba(37,211,102,0.18)' },
-    { label: 'Nov', h: '20%', color: 'rgba(37,211,102,0.22)' },
-    { label: 'Déc', h: '42%', color: 'rgba(37,211,102,0.28)' },
-    { label: 'Jan', h: '55%', color: 'rgba(37,211,102,0.35)' },
-    { label: 'Fév', h: '72%', color: 'rgba(37,211,102,0.5)'  },
-    { label: 'Mar', h: '100%',color: '#25D366'               },
-  ];
+import { useMemo, useState } from 'react';
+import {
+  CURRENT_MONTH,
+  DEMO_TENANT,
+  getClientCompletions,
+  getDashboardStats,
+  getPiecesByClient,
+} from '@/lib/piecebot/mock';
+import {
+  CATEGORY_LABELS,
+  STATUS_META,
+  confidenceColor,
+  formatAmount,
+  formatPercent,
+  formatShortDate,
+  initials,
+} from '@/lib/piecebot/format';
+import type { Piece } from '@/lib/piecebot/types';
+
+const ACCENT = '#25D366';
+
+function KpiCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div style={{ fontSize: 15, fontWeight: 600 }}>Revenus mensuels (XAF)</div>
-        <div style={{ fontSize: 12, color: 'var(--muted)', background: 'var(--bg)', padding: '4px 12px', borderRadius: 6 }}>Oct 2024 — Mars 2025</div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, height: 72 }}>
-        {bars.map(b => (
-          <div key={b.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
-            <div style={{ width: '100%', background: b.color, borderRadius: '4px 4px 0 0', height: b.h, transition: 'height 0.3s' }} />
-          </div>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 28, marginTop: 16 }}>
-        <div><div style={{ fontSize: 11, color: 'var(--dim)' }}>Ce mois</div><div style={{ fontSize: 16, fontWeight: 700, color: '#25D366' }}>3 450 000 XAF</div></div>
-        <div><div style={{ fontSize: 11, color: 'var(--dim)' }}>Précédent</div><div style={{ fontSize: 16, fontWeight: 700 }}>2 180 000 XAF</div></div>
-        <div><div style={{ fontSize: 11, color: 'var(--dim)' }}>Croissance</div><div style={{ fontSize: 16, fontWeight: 700, color: '#25D366' }}>+58%</div></div>
-      </div>
+    <div
+      style={{
+        background: 'var(--card)',
+        border: '1px solid var(--border)',
+        borderRadius: 14,
+        padding: 20,
+      }}
+    >
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>{label}</div>
+      <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>{value}</div>
+      {hint && <div style={{ fontSize: 12, color: 'var(--dim)', marginTop: 4 }}>{hint}</div>}
     </div>
   );
 }
 
-function WACommands() {
+function StatusBadge({ status }: { status: Piece['status'] }) {
+  const meta = STATUS_META[status];
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
-      <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 3 }}>Commandes WhatsApp</div>
-      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>Tape directement dans la conversation bot</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {WA_COMMANDS.map(c => (
-          <div key={c.cmd} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: 'var(--bg)', borderRadius: 9 }}>
-            <code style={{ fontSize: 12, color: '#25D366', background: 'rgba(37,211,102,0.1)', padding: '3px 9px', borderRadius: 5, fontFamily: 'monospace', flexShrink: 0 }}>{c.cmd}</code>
-            <span style={{ fontSize: 13, color: 'var(--muted)' }}>{c.desc}</span>
-          </div>
-        ))}
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 600,
+        color: meta.color,
+        background: `${meta.color}1A`,
+        padding: '3px 9px',
+        borderRadius: 6,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
+function PieceRow({ piece }: { piece: Piece }) {
+  const { extractedData: ex } = piece;
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1.4fr 1fr 0.9fr 0.7fr auto',
+        alignItems: 'center',
+        gap: 12,
+        padding: '12px 16px',
+        borderTop: '1px solid var(--border)',
+        fontSize: 13,
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div
+          style={{
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {ex.supplier ?? piece.originalFileName}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--muted)' }}>{CATEGORY_LABELS[piece.category]}</div>
       </div>
+      <div style={{ fontWeight: 600 }}>{formatAmount(ex.totalAmountTtc, ex.currency)}</div>
+      <div style={{ color: 'var(--muted)' }}>{formatShortDate(ex.documentDate ?? piece.receivedAt)}</div>
+      <div title={`Confiance OCR ${formatPercent(piece.confidence)}`}>
+        {piece.status === 'received' || piece.status === 'processing' ? (
+          <span style={{ fontSize: 11, color: 'var(--dim)' }}>—</span>
+        ) : (
+          <span style={{ fontSize: 12, fontWeight: 600, color: confidenceColor(piece.confidence) }}>
+            {formatPercent(piece.confidence)}
+          </span>
+        )}
+      </div>
+      <StatusBadge status={piece.status} />
     </div>
   );
 }
 
 export default function DashboardPage() {
-  const [page, setPage] = useState('dashboard');
+  const [month] = useState(CURRENT_MONTH);
+
+  const stats = useMemo(() => getDashboardStats(month), [month]);
+  const completions = useMemo(() => getClientCompletions(month), [month]);
+  const inbox = useMemo(() => getPiecesByClient(month), [month]);
+
+  const lateClients = completions.filter((c) => c.piecesReceived === 0);
+  const monthLabel = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(
+    new Date(`${month}-01T00:00:00`),
+  );
+
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--bg)', overflow: 'hidden' }}>
-      <Sidebar activePage={page} onNavigate={setPage} />
-      <main style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '28px 36px 0', marginBottom: 28 }}>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 3 }}>Bonjour, Kouamé 👋</h1>
-            <p style={{ fontSize: 13, color: 'var(--muted)' }}>Lundi 31 mars 2025 · Plan Pro · 6 factures ce mois</p>
+    <main
+      style={{
+        minHeight: '100vh',
+        background: 'var(--bg)',
+        color: 'var(--text)',
+        fontFamily: 'Space Grotesk, sans-serif',
+      }}
+    >
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 28px 48px' }}>
+        {/* En-tête */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 12, color: ACCENT, fontWeight: 600, marginBottom: 4 }}>
+            {DEMO_TENANT.name}
           </div>
-          <button style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#25D366', color: '#000', fontWeight: 700, fontSize: 14, padding: '11px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'Space Grotesk, sans-serif' }}>
-            <span style={{ fontSize: 16 }}>+</span> Nouvelle facture
-          </button>
+          <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 3 }}>
+            Pièces de {monthLabel}
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--muted)' }}>
+            Boîte de réception des justificatifs reçus par WhatsApp, classés par client.
+          </p>
         </div>
 
-        <div style={{ padding: '0 36px 36px' }}>
-          {page === 'dashboard' && (
-            <>
-              <StatsGrid />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 14, marginBottom: 20 }}>
-                <RevenueChart />
-                {/* Top clients */}
-                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: 22 }}>
-                  <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Top clients</div>
-                  {[
-                    { initials:'BO', name:"Bolloré Africa", amount:'1.2M XAF', invoices:'3', color:'#25D366' },
-                    { initials:'OC', name:"Orange CI",       amount:'750K XAF', invoices:'2', color:'#F59E0B' },
-                    { initials:'AI', name:"Air CI",          amount:'750K XAF', invoices:'1', color:'#3B82F6' },
-                    { initials:'EB', name:"Ecobank",         amount:'450K XAF', invoices:'1', color:'#8B5CF6' },
-                  ].map(c => (
-                    <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                      <div style={{ width: 34, height: 34, borderRadius: 9, background: `${c.color}1A`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: c.color, flexShrink: 0 }}>{c.initials}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--muted)' }}>{c.invoices} facture{parseInt(c.invoices)>1?'s':''}</div>
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{c.amount}</div>
+        {/* KPIs */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 14,
+            marginBottom: 28,
+          }}
+        >
+          <KpiCard label="Pièces du mois" value={String(stats.totalPieces)} />
+          <KpiCard
+            label="À valider"
+            value={String(stats.pendingValidation)}
+            hint={stats.pendingValidation > 0 ? 'En attente du cabinet' : 'Rien en attente'}
+          />
+          <KpiCard label="Clients actifs" value={`${stats.activeClients}/${completions.length}`} />
+          <KpiCard label="Taux de complétion" value={formatPercent(stats.completionRate)} />
+        </div>
+
+        {/* Alerte clients en retard */}
+        {lateClients.length > 0 && (
+          <div
+            style={{
+              background: 'rgba(245,158,11,0.08)',
+              border: '1px solid rgba(245,158,11,0.3)',
+              borderRadius: 12,
+              padding: '14px 18px',
+              marginBottom: 24,
+              fontSize: 13,
+            }}
+          >
+            <strong style={{ color: '#F59E0B' }}>⚠ {lateClients.length} client(s) sans pièce</strong>{' '}
+            ce mois : {lateClients.map((c) => c.companyName).join(', ')}.
+          </div>
+        )}
+
+        {/* Inbox par client */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {inbox.map(({ client, pieces }) => {
+            const completion = completions.find((c) => c.endClientId === client.id);
+            return (
+              <section
+                key={client.id}
+                style={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '16px 18px',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 10,
+                      background: `${ACCENT}1A`,
+                      color: ACCENT,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {initials(client.companyName)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 600 }}>{client.companyName}</div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                      {client.contactName} · {client.whatsappNumber}
                     </div>
-                  ))}
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>
+                      {completion?.piecesValidated ?? 0}/{pieces.length} validées
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--dim)' }}>
+                      {formatPercent(completion?.completionRate ?? 0)} complété
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
-
-          <InvoiceTable />
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <LogoUpload />
-            <WACommands />
-          </div>
+                {pieces.map((piece) => (
+                  <PieceRow key={piece.id} piece={piece} />
+                ))}
+              </section>
+            );
+          })}
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
