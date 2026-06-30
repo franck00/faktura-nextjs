@@ -2,9 +2,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Faktura — Facturation WhatsApp pour l'Afrique',
-  description: 'Un message WhatsApp. Un PDF professionnel. En moins de 15 secondes.',
-  keywords: ['facture', 'whatsapp', 'afrique', 'pme', 'invoice', 'bot'],
+  title: 'PieceBot — Collecte WhatsApp des pièces comptables',
+  description:
+    'Vos clients envoient leurs justificatifs par WhatsApp. PieceBot les classe automatiquement par client, prêts pour la compta.',
+  keywords: ['comptabilité', 'whatsapp', 'afrique', 'cabinet', 'pièces', 'ocr', 'bot'],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
