@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using PieceBot.Core.Abstractions;
+using PieceBot.Infrastructure.Billing;
 using PieceBot.Infrastructure.Repositories;
 
 namespace PieceBot.Infrastructure;
@@ -17,6 +18,9 @@ public static class DependencyInjection
         services.AddSingleton<IEndClientRepository, InMemoryEndClientRepository>();
         services.AddSingleton<IPieceRepository, InMemoryPieceRepository>();
         services.AddSingleton<ITenantRepository, InMemoryTenantRepository>();
+
+        // Passerelle Stripe (stub en attendant le SDK Stripe.net).
+        services.AddSingleton<IStripeGateway, StubStripeGateway>();
         return services;
     }
 }
