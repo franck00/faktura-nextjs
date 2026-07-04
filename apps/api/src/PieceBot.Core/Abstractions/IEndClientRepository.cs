@@ -19,6 +19,16 @@ public interface IEndClientRepository
         string id,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Résout un client à partir de son numéro WhatsApp expéditeur (spec §5.3).
+    /// La comparaison est insensible au format (le webhook Meta envoie
+    /// <c>237699123456</c>, on stocke <c>+237699123456</c>).
+    /// </summary>
+    Task<EndClient?> GetByWhatsappNumberAsync(
+        string tenantId,
+        string whatsappNumber,
+        CancellationToken cancellationToken = default);
+
     Task<EndClient> CreateAsync(EndClient client, CancellationToken cancellationToken = default);
 
     Task<EndClient?> UpdateAsync(EndClient client, CancellationToken cancellationToken = default);

@@ -54,6 +54,21 @@ public sealed class InMemoryEndClientRepository : IEndClientRepository
         return Task.FromResult(client is not null && client.TenantId == tenantId ? client : null);
     }
 
+    public Task<EndClient?> GetByWhatsappNumberAsync(
+        string tenantId,
+        string whatsappNumber,
+        CancellationToken cancellationToken = default)
+    {
+        var target = NormalizeNumber(whatsappNumber);
+        var match = _clients.Values.FirstOrDefault(c =>
+            c.TenantId == tenantId && NormalizeNumber(c.WhatsappNumber) == target);
+        return Task.FromResult(match);
+    }
+
+    /// <summary>Ne garde que les chiffres pour comparer des numéros de formats différents.</summary>
+    private static string NormalizeNumber(string number) =>
+        new string(number.Where(char.IsDigit).ToArray());
+
     public Task<EndClient> CreateAsync(EndClient client, CancellationToken cancellationToken = default)
     {
         _clients[client.Id] = client;

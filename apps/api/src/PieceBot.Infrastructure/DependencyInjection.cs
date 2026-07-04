@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using PieceBot.Core.Abstractions;
+using PieceBot.Infrastructure.Messaging;
 using PieceBot.Infrastructure.Repositories;
 
 namespace PieceBot.Infrastructure;
@@ -17,6 +18,10 @@ public static class DependencyInjection
         services.AddSingleton<IEndClientRepository, InMemoryEndClientRepository>();
         services.AddSingleton<IPieceRepository, InMemoryPieceRepository>();
         services.AddSingleton<ITenantRepository, InMemoryTenantRepository>();
+
+        // Ports WhatsApp (stubs en attendant Meta Cloud API + Blob Storage).
+        services.AddSingleton<IWhatsAppMediaStore, StubWhatsAppMediaStore>();
+        services.AddSingleton<IWhatsAppSender, StubWhatsAppSender>();
         return services;
     }
 }
