@@ -1,6 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import {
+  fetchClientCompletions,
+  fetchCurrentTenant,
+  fetchDashboardStats,
+  fetchEndClients,
+  fetchPieces,
+  groupPiecesByClient,
+} from '@/lib/piecebot/api';
 import {
   CURRENT_MONTH,
   DEMO_TENANT,
@@ -17,20 +25,50 @@ import {
   formatShortDate,
   initials,
 } from '@/lib/piecebot/format';
-import type { Piece } from '@/lib/piecebot/types';
+import type { ClientCompletion, DashboardStats, EndClient, Piece } from '@/lib/piecebot/types';
 
 const ACCENT = '#25D366';
 
+interface DashboardData {
+  tenantName: string;
+  stats: DashboardStats;
+  completions: ClientCompletion[];
+  inbox: Array<{ client: EndClient; pieces: Piece[] }>;
+  offline: boolean;
+}
+
+/** Charge les données depuis l'API .NET ; bascule sur le mock si l'API est injoignable. */
+async function loadDashboard(month: string, signal: AbortSignal): Promise<DashboardData> {
+  try {
+    const [tenant, stats, completions, pieces, clients] = await Promise.all([
+      fetchCurrentTenant(signal),
+      fetchDashboardStats(month, signal),
+      fetchClientCompletions(month, signal),
+      fetchPieces(month, signal),
+      fetchEndClients(undefined, signal),
+    ]);
+    return {
+      tenantName: tenant.name,
+      stats,
+      completions,
+      inbox: groupPiecesByClient(clients, pieces),
+      offline: false,
+    };
+  } catch {
+    // Fallback hors-ligne : données de démonstration locales.
+    return {
+      tenantName: DEMO_TENANT.name,
+      stats: getDashboardStats(month),
+      completions: getClientCompletions(month),
+      inbox: getPiecesByClient(month),
+      offline: true,
+    };
+  }
+}
+
 function KpiCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div
-      style={{
-        background: 'var(--card)',
-        border: '1px solid var(--border)',
-        borderRadius: 14,
-        padding: 20,
-      }}
-    >
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>{label}</div>
       <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>{value}</div>
       {hint && <div style={{ fontSize: 12, color: 'var(--dim)', marginTop: 4 }}>{hint}</div>}
@@ -72,14 +110,7 @@ function PieceRow({ piece }: { piece: Piece }) {
       }}
     >
       <div style={{ minWidth: 0 }}>
-        <div
-          style={{
-            fontWeight: 600,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
+        <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {ex.supplier ?? piece.originalFileName}
         </div>
         <div style={{ fontSize: 11, color: 'var(--muted)' }}>{CATEGORY_LABELS[piece.category]}</div>
@@ -102,31 +133,65 @@ function PieceRow({ piece }: { piece: Piece }) {
 
 export default function DashboardPage() {
   const [month] = useState(CURRENT_MONTH);
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const stats = useMemo(() => getDashboardStats(month), [month]);
-  const completions = useMemo(() => getClientCompletions(month), [month]);
-  const inbox = useMemo(() => getPiecesByClient(month), [month]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    loadDashboard(month, controller.signal).then((result) => {
+      setData(result);
+      setLoading(false);
+    });
+    return () => controller.abort();
+  }, [month]);
 
-  const lateClients = completions.filter((c) => c.piecesReceived === 0);
   const monthLabel = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(
     new Date(`${month}-01T00:00:00`),
   );
 
+  const wrap: React.CSSProperties = {
+    minHeight: '100vh',
+    background: 'var(--bg)',
+    color: 'var(--text)',
+    fontFamily: 'Space Grotesk, sans-serif',
+  };
+
+  if (loading || !data) {
+    return (
+      <main style={wrap}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: 32, color: 'var(--muted)' }}>
+          Chargement du tableau de bord…
+        </div>
+      </main>
+    );
+  }
+
+  const { tenantName, stats, completions, inbox, offline } = data;
+  const lateClients = completions.filter((c) => c.piecesReceived === 0);
+
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        background: 'var(--bg)',
-        color: 'var(--text)',
-        fontFamily: 'Space Grotesk, sans-serif',
-      }}
-    >
+    <main style={wrap}>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 28px 48px' }}>
+        {offline && (
+          <div
+            style={{
+              background: 'rgba(245,158,11,0.08)',
+              border: '1px solid rgba(245,158,11,0.3)',
+              borderRadius: 10,
+              padding: '10px 14px',
+              marginBottom: 16,
+              fontSize: 12,
+              color: '#F59E0B',
+            }}
+          >
+            ⚠ API injoignable — affichage des données de démonstration (lancez <code>apps/api</code>).
+          </div>
+        )}
+
         {/* En-tête */}
         <div style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 12, color: ACCENT, fontWeight: 600, marginBottom: 4 }}>
-            {DEMO_TENANT.name}
-          </div>
+          <div style={{ fontSize: 12, color: ACCENT, fontWeight: 600, marginBottom: 4 }}>{tenantName}</div>
           <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 3 }}>
             Pièces de {monthLabel}
           </h1>
@@ -136,14 +201,7 @@ export default function DashboardPage() {
         </div>
 
         {/* KPIs */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: 14,
-            marginBottom: 28,
-          }}
-        >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
           <KpiCard label="Pièces du mois" value={String(stats.totalPieces)} />
           <KpiCard
             label="À valider"
@@ -185,14 +243,7 @@ export default function DashboardPage() {
                   overflow: 'hidden',
                 }}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '16px 18px',
-                  }}
-                >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px' }}>
                   <div
                     style={{
                       width: 38,
