@@ -22,6 +22,8 @@ public static class DependencyInjection
         // Ports WhatsApp (stubs en attendant Meta Cloud API + Blob Storage).
         services.AddSingleton<IWhatsAppMediaStore, StubWhatsAppMediaStore>();
         services.AddSingleton<IWhatsAppSender, StubWhatsAppSender>();
+        services.AddSingleton<IMonthlyReminderRepository, InMemoryMonthlyReminderRepository>();
+        services.AddSingleton<IExportJobRepository, InMemoryExportJobRepository>();
         return services;
     }
 }
