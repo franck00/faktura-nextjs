@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using PieceBot.Core.Abstractions;
+using PieceBot.Infrastructure.Billing;
 using PieceBot.Infrastructure.Messaging;
 using PieceBot.Infrastructure.Repositories;
 
@@ -19,6 +20,8 @@ public static class DependencyInjection
         services.AddSingleton<IPieceRepository, InMemoryPieceRepository>();
         services.AddSingleton<ITenantRepository, InMemoryTenantRepository>();
 
+        // Passerelle Stripe (stub en attendant le SDK Stripe.net).
+        services.AddSingleton<IStripeGateway, StubStripeGateway>();
         // Ports WhatsApp (stubs en attendant Meta Cloud API + Blob Storage).
         services.AddSingleton<IWhatsAppMediaStore, StubWhatsAppMediaStore>();
         services.AddSingleton<IWhatsAppSender, StubWhatsAppSender>();
