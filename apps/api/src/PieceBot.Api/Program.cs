@@ -17,8 +17,8 @@ builder.Services.AddOpenApi();
 // Couche Core / BLL (règles métier).
 builder.Services.AddCoreServices();
 
-// Couche Infrastructure (repositories, accès données).
-builder.Services.AddInfrastructure();
+// Couche Infrastructure (repositories, accès données : Cosmos si configuré, sinon In-Memory).
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // CORS pour le frontend Next.js (apps/web).
 const string WebCorsPolicy = "web";
@@ -29,6 +29,16 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()));
 
 var app = builder.Build();
+
+// Provisionne la base + conteneurs Cosmos au démarrage (uniquement si Cosmos est configuré).
+using (var scope = app.Services.CreateScope())
+{
+    var bootstrapper = scope.ServiceProvider.GetService<PieceBot.Infrastructure.Cosmos.CosmosBootstrapper>();
+    if (bootstrapper is not null)
+    {
+        await bootstrapper.EnsureProvisionedAsync();
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {

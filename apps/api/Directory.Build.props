@@ -1,0 +1,12 @@
+<Project>
+
+  <!--
+    Propriétés communes à tous les projets de apps/api.
+    On sérialise Cosmos DB avec System.Text.Json (SystemTextJsonCosmosSerializer),
+    donc on désactive le contrôle du SDK qui exige une référence Newtonsoft.Json.
+  -->
+  <PropertyGroup>
+    <AzureCosmosDisableNewtonsoftJsonCheck>true</AzureCosmosDisableNewtonsoftJsonCheck>
+  </PropertyGroup>
+
+</Project>
