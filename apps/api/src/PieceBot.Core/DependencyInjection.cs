@@ -12,6 +12,10 @@ public static class DependencyInjection
         services.AddScoped<IPieceService, PieceService>();
         services.AddScoped<IStatsService, StatsService>();
         services.AddScoped<ITenantService, TenantService>();
+        services.AddScoped<IBillingService, BillingService>();
+        services.AddScoped<IWhatsAppWebhookService, WhatsAppWebhookService>();
+        services.AddScoped<IReminderService, ReminderService>();
+        services.AddScoped<IExportService, ExportService>();
         return services;
     }
 }

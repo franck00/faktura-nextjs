@@ -15,5 +15,13 @@ public interface ITenantRepository
         string phoneNumberId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Résout le cabinet à partir de son identifiant client Stripe (spec §5.8).
+    /// Sert au webhook Stripe pour appliquer le cycle de vie de l'abonnement.
+    /// </summary>
+    Task<Tenant?> GetByStripeCustomerIdAsync(
+        string stripeCustomerId,
+        CancellationToken cancellationToken = default);
+
     Task<Tenant?> UpdateAsync(Tenant tenant, CancellationToken cancellationToken = default);
 }

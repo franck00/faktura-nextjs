@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PieceBot.Core.Abstractions;
 using PieceBot.Infrastructure.Cosmos;
+using PieceBot.Infrastructure.Billing;
+using PieceBot.Infrastructure.Messaging;
 using PieceBot.Infrastructure.Repositories;
 
 namespace PieceBot.Infrastructure;
@@ -54,5 +56,14 @@ public static class DependencyInjection
         services.AddScoped<IEndClientRepository, CosmosEndClientRepository>();
         services.AddScoped<IPieceRepository, CosmosPieceRepository>();
         services.AddScoped<ITenantRepository, CosmosTenantRepository>();
+
+        // Passerelle Stripe (stub en attendant le SDK Stripe.net).
+        services.AddSingleton<IStripeGateway, StubStripeGateway>();
+        // Ports WhatsApp (stubs en attendant Meta Cloud API + Blob Storage).
+        services.AddSingleton<IWhatsAppMediaStore, StubWhatsAppMediaStore>();
+        services.AddSingleton<IWhatsAppSender, StubWhatsAppSender>();
+        services.AddSingleton<IMonthlyReminderRepository, InMemoryMonthlyReminderRepository>();
+        services.AddSingleton<IExportJobRepository, InMemoryExportJobRepository>();
+        return services;
     }
 }

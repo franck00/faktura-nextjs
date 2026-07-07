@@ -33,6 +33,14 @@ public sealed class InMemoryTenantRepository : ITenantRepository
         return Task.FromResult(tenant);
     }
 
+    public Task<Tenant?> GetByStripeCustomerIdAsync(
+        string stripeCustomerId,
+        CancellationToken cancellationToken = default)
+    {
+        var tenant = _tenants.Values.FirstOrDefault(t => t.StripeCustomerId == stripeCustomerId);
+        return Task.FromResult(tenant);
+    }
+
     public Task<Tenant?> UpdateAsync(Tenant tenant, CancellationToken cancellationToken = default)
     {
         if (!_tenants.ContainsKey(tenant.TenantId))
