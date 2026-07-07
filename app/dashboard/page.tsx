@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   fetchClientCompletions,
   fetchCurrentTenant,
@@ -8,6 +9,7 @@ import {
   fetchEndClients,
   fetchPieces,
   groupPiecesByClient,
+  validatePiece,
 } from '@/lib/piecebot/api';
 import {
   CURRENT_MONTH,
@@ -95,7 +97,15 @@ function StatusBadge({ status }: { status: Piece['status'] }) {
   );
 }
 
-function PieceRow({ piece }: { piece: Piece }) {
+function PieceRow({
+  piece,
+  onValidate,
+  validating,
+}: {
+  piece: Piece;
+  onValidate: (id: string) => void;
+  validating: boolean;
+}) {
   const { extractedData: ex } = piece;
   return (
     <div
@@ -126,7 +136,29 @@ function PieceRow({ piece }: { piece: Piece }) {
           </span>
         )}
       </div>
-      <StatusBadge status={piece.status} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+        {piece.status === 'extracted' && (
+          <button
+            onClick={() => onValidate(piece.id)}
+            disabled={validating}
+            style={{
+              background: '#25D366',
+              color: '#000',
+              border: 'none',
+              fontWeight: 700,
+              fontSize: 11,
+              padding: '4px 10px',
+              borderRadius: 6,
+              cursor: validating ? 'wait' : 'pointer',
+              fontFamily: 'inherit',
+              opacity: validating ? 0.6 : 1,
+            }}
+          >
+            {validating ? '…' : 'Valider'}
+          </button>
+        )}
+        <StatusBadge status={piece.status} />
+      </div>
     </div>
   );
 }
@@ -135,6 +167,8 @@ export default function DashboardPage() {
   const [month] = useState(CURRENT_MONTH);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [validatingId, setValidatingId] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -144,7 +178,19 @@ export default function DashboardPage() {
       setLoading(false);
     });
     return () => controller.abort();
-  }, [month]);
+  }, [month, refreshKey]);
+
+  async function handleValidate(pieceId: string) {
+    setValidatingId(pieceId);
+    try {
+      await validatePiece(pieceId);
+      setRefreshKey((k) => k + 1);
+    } catch {
+      /* API offline (mode démo) : la validation n'est pas persistée. */
+    } finally {
+      setValidatingId(null);
+    }
+  }
 
   const monthLabel = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(
     new Date(`${month}-01T00:00:00`),
@@ -190,14 +236,32 @@ export default function DashboardPage() {
         )}
 
         {/* En-tête */}
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 12, color: ACCENT, fontWeight: 600, marginBottom: 4 }}>{tenantName}</div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 3 }}>
-            Pièces de {monthLabel}
-          </h1>
-          <p style={{ fontSize: 13, color: 'var(--muted)' }}>
-            Boîte de réception des justificatifs reçus par WhatsApp, classés par client.
-          </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
+          <div>
+            <div style={{ fontSize: 12, color: ACCENT, fontWeight: 600, marginBottom: 4 }}>{tenantName}</div>
+            <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 3 }}>
+              Pièces de {monthLabel}
+            </h1>
+            <p style={{ fontSize: 13, color: 'var(--muted)' }}>
+              Boîte de réception des justificatifs reçus par WhatsApp, classés par client.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/clients"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              color: 'var(--text)',
+              fontWeight: 600,
+              fontSize: 13,
+              padding: '9px 16px',
+              borderRadius: 10,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Gérer les clients →
+          </Link>
         </div>
 
         {/* KPIs */}
@@ -277,7 +341,12 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 {pieces.map((piece) => (
-                  <PieceRow key={piece.id} piece={piece} />
+                  <PieceRow
+                    key={piece.id}
+                    piece={piece}
+                    onValidate={handleValidate}
+                    validating={validatingId === piece.id}
+                  />
                 ))}
               </section>
             );
