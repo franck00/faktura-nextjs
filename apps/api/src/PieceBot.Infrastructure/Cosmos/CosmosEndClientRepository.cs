@@ -67,6 +67,22 @@ public sealed class CosmosEndClientRepository : IEndClientRepository
         }
     }
 
+    public async Task<EndClient?> GetByWhatsappNumberAsync(
+        string tenantId,
+        string whatsappNumber,
+        CancellationToken cancellationToken = default)
+    {
+        // La normalisation de numéro n'est pas exprimable en SQL Cosmos → on filtre
+        // les clients de la partition en mémoire (volume par cabinet raisonnable).
+        var clients = await ListAsync(tenantId, null, cancellationToken);
+        var target = NormalizeNumber(whatsappNumber);
+        return clients.FirstOrDefault(c => NormalizeNumber(c.WhatsappNumber) == target);
+    }
+
+    /// <summary>Ne garde que les chiffres pour comparer des numéros de formats différents.</summary>
+    private static string NormalizeNumber(string number) =>
+        new string(number.Where(char.IsDigit).ToArray());
+
     public async Task<EndClient> CreateAsync(EndClient client, CancellationToken cancellationToken = default)
     {
         var response = await _container.UpsertItemAsync(
