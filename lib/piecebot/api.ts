@@ -33,6 +33,32 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   return (await res.json()) as T;
 }
 
+async function sendJson<T>(method: 'POST' | 'PUT', path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let message = `${method} ${path} → ${res.status}`;
+    try {
+      const err = await res.json();
+      if (err?.error) message = err.error as string;
+    } catch {
+      /* corps non-JSON */
+    }
+    throw new ApiError(message, res.status);
+  }
+  return (await res.json()) as T;
+}
+
+async function deleteResource(path: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}${path}`, { method: 'DELETE' });
+  if (!res.ok && res.status !== 204) {
+    throw new ApiError(`DELETE ${path} → ${res.status}`, res.status);
+  }
+}
+
 interface ListEnvelope<T> {
   items: T[];
   total?: number;
@@ -84,4 +110,48 @@ export function groupPiecesByClient(
         .sort((a, b) => b.receivedAt.localeCompare(a.receivedAt)),
     }))
     .filter((group) => group.pieces.length > 0);
+}
+
+// ── Mutations EndClients (spec §6.3) ────────────────────────────────────────
+
+/** Corps de création/édition d'un client (aligné sur CreateEndClientRequest .NET). */
+export interface EndClientInput {
+  companyName: string;
+  contactName: string;
+  whatsappNumber: string;
+  email?: string;
+  siret?: string;
+  vatNumber?: string;
+  tags?: string[];
+}
+
+export function createEndClient(input: EndClientInput): Promise<EndClient> {
+  return sendJson<EndClient>('POST', '/api/endclients', input);
+}
+
+export function updateEndClient(id: string, input: EndClientInput): Promise<EndClient> {
+  return sendJson<EndClient>('PUT', `/api/endclients/${id}`, input);
+}
+
+export function deleteEndClient(id: string): Promise<void> {
+  return deleteResource(`/api/endclients/${id}`);
+}
+
+export function fetchEndClient(id: string, signal?: AbortSignal): Promise<EndClient> {
+  return getJson<EndClient>(`/api/endclients/${id}`, signal);
+}
+
+// ── Mutations Pièces (spec §6.4) ────────────────────────────────────────────
+
+/** Valide l'extraction d'une pièce (passe en statut validated). */
+export function validatePiece(id: string): Promise<Piece> {
+  return sendJson<Piece>('PUT', `/api/pieces/${id}/validate`, {});
+}
+
+/** Corrige la catégorie et/ou les données extraites d'une pièce. */
+export function correctPiece(
+  id: string,
+  patch: { category?: Piece['category']; extractedData?: Partial<Piece['extractedData']> },
+): Promise<Piece> {
+  return sendJson<Piece>('PUT', `/api/pieces/${id}`, patch);
 }
