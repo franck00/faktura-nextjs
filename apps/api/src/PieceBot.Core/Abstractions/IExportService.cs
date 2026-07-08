@@ -25,4 +25,10 @@ public interface IExportService
         string tenantId,
         string jobId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Récupère le fichier généré d'un job (pour le téléchargement).</summary>
+    Task<ExportFile?> GetFileAsync(
+        string tenantId,
+        string jobId,
+        CancellationToken cancellationToken = default);
 }

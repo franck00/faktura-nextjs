@@ -1,5 +1,6 @@
 using PieceBot.Core.Domain;
 using PieceBot.Core.Services;
+using PieceBot.Infrastructure.Exports;
 using PieceBot.Infrastructure.Repositories;
 
 namespace PieceBot.Tests;
@@ -9,8 +10,15 @@ public sealed class ExportServiceTests
     private const string TenantId = "tenant_mvogo";
     private const string Month = "2026-06";
 
+    // Le service rend désormais un vrai fichier (QuestPDF / ClosedXML) et le stocke :
+    // chaque test exerce donc la génération réelle de bout en bout.
     private static ExportService NewService() =>
-        new(new InMemoryExportJobRepository(), new InMemoryPieceRepository());
+        new(
+            new InMemoryExportJobRepository(),
+            new InMemoryPieceRepository(),
+            new InMemoryEndClientRepository(),
+            new PdfExcelExportRenderer(),
+            new InMemoryExportFileStore());
 
     [Fact]
     public async Task CreateMonthlyExportAsync_Pdf_CompletesWithBlobUrl()
@@ -38,6 +46,35 @@ public sealed class ExportServiceTests
     }
 
     [Fact]
+    public async Task CreateMonthlyExportAsync_Pdf_GeneratesRealPdfBytes()
+    {
+        var service = NewService();
+
+        var job = await service.CreateMonthlyExportAsync(TenantId, ExportFormat.Pdf, Month);
+        var file = await service.GetFileAsync(TenantId, job.Id);
+
+        Assert.NotNull(file);
+        Assert.True(file!.Bytes.Length > 1000);
+        Assert.Equal("application/pdf", file.ContentType);
+        // En-tête magique PDF : "%PDF".
+        Assert.Equal(new byte[] { 0x25, 0x50, 0x44, 0x46 }, file.Bytes.Take(4).ToArray());
+    }
+
+    [Fact]
+    public async Task CreateMonthlyExportAsync_Excel_GeneratesRealXlsxBytes()
+    {
+        var service = NewService();
+
+        var job = await service.CreateMonthlyExportAsync(TenantId, ExportFormat.Excel, Month);
+        var file = await service.GetFileAsync(TenantId, job.Id);
+
+        Assert.NotNull(file);
+        Assert.True(file!.Bytes.Length > 1000);
+        // Un .xlsx est une archive ZIP : signature "PK".
+        Assert.Equal(new byte[] { 0x50, 0x4B }, file.Bytes.Take(2).ToArray());
+    }
+
+    [Fact]
     public async Task CreateMonthlyExportAsync_BatchExport_CountsAllMonthPieces()
     {
         var service = NewService();
@@ -46,7 +83,8 @@ public sealed class ExportServiceTests
 
         // 6 pièces de démo sur 2026-06.
         Assert.Equal(6, job.PieceCount);
-        Assert.Contains("_all.pdf", job.FileName);
+        // Export par lot → nom de fichier « cabinet ».
+        Assert.Contains("cabinet", job.FileName);
     }
 
     [Fact]
@@ -60,7 +98,8 @@ public sealed class ExportServiceTests
         // client_aissa : 3 pièces (78500 + 24000 + 45000 = 147500 TTC).
         Assert.Equal(3, job.PieceCount);
         Assert.Equal(147500, job.TotalAmountTtc);
-        Assert.Contains("client_aissa", job.FileName);
+        // Nom de fichier basé sur le mois (+ slug du nom d'entreprise).
+        Assert.StartsWith("piecebot_2026-06_", job.FileName);
     }
 
     [Fact]
