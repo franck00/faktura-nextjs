@@ -8,11 +8,22 @@ public sealed class ExportService : IExportService
 {
     private readonly IExportJobRepository _jobs;
     private readonly IPieceRepository _pieces;
+    private readonly IEndClientRepository _clients;
+    private readonly IExportRenderer _renderer;
+    private readonly IExportFileStore _store;
 
-    public ExportService(IExportJobRepository jobs, IPieceRepository pieces)
+    public ExportService(
+        IExportJobRepository jobs,
+        IPieceRepository pieces,
+        IEndClientRepository clients,
+        IExportRenderer renderer,
+        IExportFileStore store)
     {
         _jobs = jobs;
         _pieces = pieces;
+        _clients = clients;
+        _renderer = renderer;
+        _store = store;
     }
 
     public async Task<ExportJob> CreateMonthlyExportAsync(
@@ -51,15 +62,17 @@ public sealed class ExportService : IExportService
             job.PieceCount = pieces.Count;
             job.TotalAmountTtc = pieces.Sum(p => p.ExtractedData.TotalAmountTtc ?? 0);
 
-            // TODO: rendu réel du fichier (QuestPDF pour PDF, ClosedXML pour Excel,
-            // format compatible Sage/Saari/Ciel) puis upload vers Blob Storage avec
-            // une URL SAS signée. En attendant, on calcule un nom de fichier et une
-            // URL blob déterministe.
-            var ext = format == ExportFormat.Pdf ? "pdf" : "xlsx";
-            var scope = endClientId ?? "all";
-            job.FileName = $"piecebot_{month}_{scope}.{ext}";
-            job.BlobUrl =
-                $"https://piecebot.blob.core.windows.net/exports/{tenantId}/{month}/{job.Id}.{ext}";
+            // Nom d'entreprise par client, pour l'affichage dans le fichier.
+            var clients = await _clients.ListAsync(tenantId, null, cancellationToken);
+            var clientNames = clients.ToDictionary(c => c.Id, c => c.CompanyName);
+
+            // Rendu réel (QuestPDF pour PDF, ClosedXML pour Excel) puis stockage.
+            var file = _renderer.Render(job, pieces, clientNames);
+            await _store.SaveAsync(tenantId, job.Id, file, cancellationToken);
+
+            job.FileName = file.FileName;
+            // URL de téléchargement servie par l'API (Blob Storage + SAS plus tard).
+            job.BlobUrl = $"/api/exports/{job.Id}/download";
 
             job.Status = ExportStatus.Completed;
             job.CompletedAt = DateTimeOffset.UtcNow;
@@ -82,5 +95,13 @@ public sealed class ExportService : IExportService
         CancellationToken cancellationToken = default)
     {
         return _jobs.GetAsync(tenantId, jobId, cancellationToken);
+    }
+
+    public Task<ExportFile?> GetFileAsync(
+        string tenantId,
+        string jobId,
+        CancellationToken cancellationToken = default)
+    {
+        return _store.OpenAsync(tenantId, jobId, cancellationToken);
     }
 }

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PieceBot.Core.Abstractions;
 using PieceBot.Infrastructure.Billing;
 using PieceBot.Infrastructure.Cosmos;
+using PieceBot.Infrastructure.Exports;
 using PieceBot.Infrastructure.Messaging;
 using PieceBot.Infrastructure.Repositories;
 
@@ -36,6 +37,10 @@ public static class DependencyInjection
         // Repositories sans implémentation Cosmos pour l'instant (toujours In-Memory).
         services.AddSingleton<IMonthlyReminderRepository, InMemoryMonthlyReminderRepository>();
         services.AddSingleton<IExportJobRepository, InMemoryExportJobRepository>();
+
+        // Exports réels : rendu PDF/Excel + stockage local des fichiers générés.
+        services.AddSingleton<IExportRenderer, PdfExcelExportRenderer>();
+        services.AddSingleton<IExportFileStore, InMemoryExportFileStore>();
 
         // Ports externes (stubs en attendant Meta Cloud API / Blob Storage / Stripe.net).
         services.AddSingleton<IWhatsAppMediaStore, StubWhatsAppMediaStore>();

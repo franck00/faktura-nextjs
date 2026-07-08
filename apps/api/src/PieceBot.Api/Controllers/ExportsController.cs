@@ -46,6 +46,16 @@ public sealed class ExportsController : ControllerBase
         return job is null ? NotFound(new { error = "Job d'export introuvable" }) : Ok(job);
     }
 
+    /// <summary>GET /api/exports/{jobId}/download — télécharge le fichier PDF/Excel généré.</summary>
+    [HttpGet("{jobId}/download")]
+    public async Task<IActionResult> Download(string jobId, CancellationToken cancellationToken)
+    {
+        var file = await _service.GetFileAsync(TenantId, jobId, cancellationToken);
+        return file is null
+            ? NotFound(new { error = "Fichier d'export introuvable ou expiré" })
+            : File(file.Bytes, file.ContentType, file.FileName);
+    }
+
     private async Task<ActionResult<ExportJob>> CreateExport(
         ExportFormat format,
         CreateExportRequest request,
