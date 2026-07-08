@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using PieceBot.Core;
 using PieceBot.Infrastructure;
 
@@ -28,6 +30,26 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader()
             .AllowAnyMethod()));
 
+// Auth Clerk (JWT bearer) — activée uniquement si Clerk:Authority est configuré.
+// Le tenant est résolu depuis les claims (voir TenantResolution) ; sans config,
+// l'API reste ouverte avec le tenant de démo.
+var clerkAuthority = builder.Configuration["Clerk:Authority"];
+if (!string.IsNullOrWhiteSpace(clerkAuthority))
+{
+    builder.Services
+        .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.Authority = clerkAuthority;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateAudience = false,
+                ValidateIssuer = true,
+                NameClaimType = "sub"
+            };
+        });
+}
+
 var app = builder.Build();
 
 // Provisionne la base + conteneurs Cosmos au démarrage (uniquement si Cosmos est configuré).
@@ -47,6 +69,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors(WebCorsPolicy);
+if (!string.IsNullOrWhiteSpace(clerkAuthority))
+{
+    app.UseAuthentication();
+}
 app.UseAuthorization();
 app.MapControllers();
 

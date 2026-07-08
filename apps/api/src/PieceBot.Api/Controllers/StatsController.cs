@@ -13,7 +13,7 @@ namespace PieceBot.Api.Controllers;
 public sealed class StatsController : ControllerBase
 {
     // TODO: résoudre le tenant depuis le JWT Clerk.
-    private const string TenantId = "tenant_mvogo";
+    private string TenantId => HttpContext.GetTenantId();
 
     private readonly IStatsService _service;
 
