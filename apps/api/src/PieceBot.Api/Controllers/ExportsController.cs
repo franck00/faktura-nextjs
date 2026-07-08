@@ -15,7 +15,7 @@ namespace PieceBot.Api.Controllers;
 public sealed class ExportsController : ControllerBase
 {
     // TODO: résoudre le tenant depuis le JWT Clerk (claim) au lieu d'une constante.
-    private const string TenantId = "tenant_mvogo";
+    private string TenantId => HttpContext.GetTenantId();
 
     private readonly IExportService _service;
 

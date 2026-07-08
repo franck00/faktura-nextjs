@@ -1,18 +1,25 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>6f9ca28f-e2de-4180-baa2-d55e28a56cea</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.3" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\PieceBot.Core\PieceBot.Core.csproj" />
     <ProjectReference Include="..\PieceBot.Infrastructure\PieceBot.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Résolution du tenant/utilisateur depuis le JWT (TenantResolution). -->
+    <Using Include="PieceBot.Api.Auth" />
   </ItemGroup>
 
 </Project>

@@ -15,8 +15,8 @@ namespace PieceBot.Api.Controllers;
 public sealed class PiecesController : ControllerBase
 {
     // TODO: résoudre tenant + utilisateur depuis le JWT Clerk.
-    private const string TenantId = "tenant_mvogo";
-    private const string ValidatorUserId = "clerk_user_id";
+    private string TenantId => HttpContext.GetTenantId();
+    private string ValidatorUserId => HttpContext.GetUserId();
 
     private readonly IPieceService _service;
 

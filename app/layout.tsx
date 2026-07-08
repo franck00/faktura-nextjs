@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -8,10 +9,16 @@ export const metadata: Metadata = {
   keywords: ['comptabilité', 'whatsapp', 'afrique', 'cabinet', 'pièces', 'ocr', 'bot'],
 };
 
+// Clerk n'enrobe l'app que si configuré (voir middleware.ts) : sans clé, l'app
+// tourne en mode démo sans authentification.
+const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
+  const document = (
     <html lang="fr" data-theme="light">
       <body>{children}</body>
     </html>
   );
+
+  return clerkEnabled ? <ClerkProvider>{document}</ClerkProvider> : document;
 }
