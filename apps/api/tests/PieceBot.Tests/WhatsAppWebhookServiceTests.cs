@@ -3,6 +3,7 @@ using System.Text;
 using PieceBot.Core.Domain;
 using PieceBot.Core.Services;
 using PieceBot.Infrastructure.Messaging;
+using PieceBot.Infrastructure.Ocr;
 using PieceBot.Infrastructure.Repositories;
 
 namespace PieceBot.Tests;
@@ -22,6 +23,8 @@ public sealed class WhatsAppWebhookServiceTests
             new InMemoryEndClientRepository(),
             pieces,
             new StubWhatsAppMediaStore(),
+            new InMemoryMediaStore(),
+            new NoOpReceiptExtractor(),
             sender);
         return (service, sender, pieces);
     }

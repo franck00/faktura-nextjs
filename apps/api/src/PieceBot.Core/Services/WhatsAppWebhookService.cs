@@ -17,6 +17,8 @@ public sealed class WhatsAppWebhookService : IWhatsAppWebhookService
     private readonly IEndClientRepository _clients;
     private readonly IPieceRepository _pieces;
     private readonly IWhatsAppMediaStore _mediaStore;
+    private readonly IMediaStore _mediaBinaries;
+    private readonly IReceiptExtractor _extractor;
     private readonly IWhatsAppSender _sender;
 
     public WhatsAppWebhookService(
@@ -24,12 +26,16 @@ public sealed class WhatsAppWebhookService : IWhatsAppWebhookService
         IEndClientRepository clients,
         IPieceRepository pieces,
         IWhatsAppMediaStore mediaStore,
+        IMediaStore mediaBinaries,
+        IReceiptExtractor extractor,
         IWhatsAppSender sender)
     {
         _tenants = tenants;
         _clients = clients;
         _pieces = pieces;
         _mediaStore = mediaStore;
+        _mediaBinaries = mediaBinaries;
+        _extractor = extractor;
         _sender = sender;
     }
 
@@ -114,19 +120,24 @@ public sealed class WhatsAppWebhookService : IWhatsAppWebhookService
                 message.FileName,
                 cancellationToken);
 
+            // OCR : extraction des données (montant, date, fournisseur…) si configuré.
+            var extraction = await ExtractAsync(stored, cancellationToken);
+
             var piece = new Piece
             {
                 Id = $"piece_{Guid.NewGuid():N}",
                 TenantId = tenant.TenantId,
                 EndClientId = client.Id,
-                Category = PieceCategory.Other,
-                Status = PieceStatus.Received,
+                Category = extraction.Category,
+                // Extracted si l'OCR a produit un résultat, sinon à traiter (Received).
+                Status = extraction.Confidence > 0 ? PieceStatus.Extracted : PieceStatus.Received,
                 Month = month,
                 ReceivedAt = message.Timestamp,
                 BlobUrl = stored.BlobUrl,
                 MimeType = stored.MimeType,
                 OriginalFileName = stored.FileName,
-                Confidence = 0,
+                ExtractedData = extraction.Data,
+                Confidence = extraction.Confidence,
                 WhatsappMessageId = message.MessageId
             };
             await _pieces.CreateAsync(piece, cancellationToken);
@@ -154,5 +165,25 @@ public sealed class WhatsAppWebhookService : IWhatsAppWebhookService
             Outcome = WebhookOutcome.Acknowledged,
             AckMessage = guidance
         };
+    }
+
+    /// <summary>
+    /// Récupère le binaire stocké et lance l'OCR. Renvoie un résultat vide si le
+    /// média n'est pas récupérable (stub) ou si l'OCR n'est pas configuré.
+    /// </summary>
+    private async Task<ReceiptExtraction> ExtractAsync(StoredMedia stored, CancellationToken cancellationToken)
+    {
+        if (stored.StorageKey is null)
+        {
+            return ReceiptExtraction.Empty;
+        }
+
+        var media = await _mediaBinaries.GetAsync(stored.StorageKey, cancellationToken);
+        if (media is null)
+        {
+            return ReceiptExtraction.Empty;
+        }
+
+        return await _extractor.ExtractAsync(media.Bytes, media.ContentType, cancellationToken);
     }
 }

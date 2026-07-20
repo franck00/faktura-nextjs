@@ -62,5 +62,9 @@ public sealed class WebhookProcessResult
     public static WebhookProcessResult Ignored() => new() { Outcome = WebhookOutcome.Ignored };
 }
 
-/// <summary>Média téléchargé depuis Meta puis stocké (Blob Storage).</summary>
-public sealed record StoredMedia(string BlobUrl, string MimeType, string FileName);
+/// <summary>
+/// Média téléchargé depuis Meta puis stocké. <see cref="StorageKey"/> permet à la
+/// BLL de récupérer le binaire (via <see cref="Abstractions.IMediaStore"/>) pour
+/// l'OCR ; <c>null</c> si le média n'est pas réellement stocké (stub).
+/// </summary>
+public sealed record StoredMedia(string BlobUrl, string MimeType, string FileName, string? StorageKey = null);
