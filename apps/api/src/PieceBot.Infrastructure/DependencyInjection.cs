@@ -46,9 +46,22 @@ public static class DependencyInjection
         services.AddSingleton<IExportRenderer, PdfExcelExportRenderer>();
         services.AddSingleton<IExportFileStore, InMemoryExportFileStore>();
 
-        // Ports externes (stubs en attendant Meta Cloud API / Blob Storage / Stripe.net).
-        services.AddSingleton<IWhatsAppMediaStore, StubWhatsAppMediaStore>();
-        services.AddSingleton<IWhatsAppSender, StubWhatsAppSender>();
+        // Stockage des binaires de pièces téléchargés (In-Memory ; Azure Blob plus tard).
+        services.AddSingleton<IMediaStore, InMemoryMediaStore>();
+
+        // WhatsApp : Meta Cloud API si WhatsApp:AccessToken configuré, sinon stubs.
+        if (!string.IsNullOrWhiteSpace(configuration["WhatsApp:AccessToken"]))
+        {
+            services.AddHttpClient<IWhatsAppSender, MetaWhatsAppSender>();
+            services.AddHttpClient<IWhatsAppMediaStore, MetaWhatsAppMediaStore>();
+        }
+        else
+        {
+            services.AddSingleton<IWhatsAppSender, StubWhatsAppSender>();
+            services.AddSingleton<IWhatsAppMediaStore, StubWhatsAppMediaStore>();
+        }
+
+        // Passerelle paiement : stub (Mobile Money africain plus tard — Stripe indispo).
         services.AddSingleton<IStripeGateway, StubStripeGateway>();
 
         return services;
