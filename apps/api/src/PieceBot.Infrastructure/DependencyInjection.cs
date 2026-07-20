@@ -27,10 +27,14 @@ public static class DependencyInjection
 
         if (!string.IsNullOrWhiteSpace(endpoint) && !string.IsNullOrWhiteSpace(key))
         {
+            Console.WriteLine($"[PieceBot] DAL = Cosmos DB ({endpoint})");
             AddCosmosRepositories(services, endpoint, key);
         }
         else
         {
+            Console.WriteLine(
+                $"[PieceBot] DAL = In-Memory (Cosmos:Endpoint présent={!string.IsNullOrWhiteSpace(endpoint)}, "
+                + $"Cosmos:Key présent={!string.IsNullOrWhiteSpace(key)})");
             AddInMemoryRepositories(services);
         }
 
@@ -63,7 +67,11 @@ public static class DependencyInjection
         services.AddSingleton(_ => new CosmosClient(endpoint, key, new CosmosClientOptions
         {
             Serializer = new SystemTextJsonCosmosSerializer(),
-            ApplicationName = "piecebot-api"
+            ApplicationName = "piecebot-api",
+            // Mode Gateway (HTTPS/443 uniquement) : le mode Direct par défaut ouvre des
+            // connexions TCP (ports 10250+) souvent bloquées par les pare-feux/proxys
+            // d'entreprise → 503 ServiceUnavailable. Gateway passe partout.
+            ConnectionMode = ConnectionMode.Gateway
         }));
 
         services.AddSingleton<CosmosBootstrapper>();
