@@ -3,7 +3,10 @@
  *
  * Les formes renvoyées correspondent exactement aux types de `./types`
  * (propriétés camelCase, enums en snake_case côté serveur — contrat aligné).
- * L'auth Clerk n'est pas encore branchée : l'API résout un tenant constant.
+ *
+ * Auth : si Clerk est actif (ClerkProvider chargé), on attache le jeton de
+ * session en Bearer. L'API résout alors le tenant depuis le token (org_id).
+ * Sans Clerk, aucun en-tête → l'API retombe sur le tenant de démo.
  */
 
 import type { ClientCompletion, DashboardStats, EndClient, Piece, Tenant } from './types';
@@ -22,9 +25,26 @@ export class ApiError extends Error {
   }
 }
 
+interface ClerkGlobal {
+  session?: { getToken: () => Promise<string | null> };
+}
+
+/** En-tête Authorization (Bearer) si une session Clerk est présente côté navigateur. */
+async function authHeaders(): Promise<Record<string, string>> {
+  if (typeof window === 'undefined') return {};
+  const clerk = (window as unknown as { Clerk?: ClerkGlobal }).Clerk;
+  if (!clerk?.session) return {};
+  try {
+    const token = await clerk.session.getToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...(await authHeaders()) },
     signal,
   });
   if (!res.ok) {
@@ -36,7 +56,11 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
 async function sendJson<T>(method: 'POST' | 'PUT', path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...(await authHeaders()),
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -53,7 +77,10 @@ async function sendJson<T>(method: 'POST' | 'PUT', path: string, body: unknown):
 }
 
 async function deleteResource(path: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}${path}`, { method: 'DELETE' });
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'DELETE',
+    headers: { ...(await authHeaders()) },
+  });
   if (!res.ok && res.status !== 204) {
     throw new ApiError(`DELETE ${path} → ${res.status}`, res.status);
   }

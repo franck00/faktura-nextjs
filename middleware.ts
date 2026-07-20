@@ -1,4 +1,4 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
 /**
@@ -6,10 +6,21 @@ import { NextResponse } from 'next/server';
  * Sans clé (dev / démo), le middleware laisse passer toutes les requêtes, donc
  * l'app fonctionne sans configurer Clerk. Pour activer : renseigner
  * NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY + CLERK_SECRET_KEY dans .env.local.
+ *
+ * Quand Clerk est actif, le dashboard exige une connexion ; la landing et les
+ * pages d'auth restent publiques.
  */
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
-export default clerkEnabled ? clerkMiddleware() : () => NextResponse.next();
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)']);
+
+export default clerkEnabled
+  ? clerkMiddleware((auth, req) => {
+      if (isProtectedRoute(req)) {
+        auth().protect();
+      }
+    })
+  : () => NextResponse.next();
 
 export const config = {
   matcher: [
