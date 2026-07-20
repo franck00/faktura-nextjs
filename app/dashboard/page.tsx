@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { OrganizationSwitcher, UserButton } from '@clerk/nextjs';
 import {
   fetchClientCompletions,
   fetchCurrentTenant,
@@ -30,6 +31,9 @@ import {
 import type { ClientCompletion, DashboardStats, EndClient, Piece } from '@/lib/piecebot/types';
 
 const ACCENT = '#25D366';
+
+/** Contrôles Clerk (org switcher + user button) affichés seulement si Clerk est configuré. */
+const CLERK_ENABLED = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 interface DashboardData {
   tenantName: string;
@@ -246,22 +250,34 @@ export default function DashboardPage() {
               Boîte de réception des justificatifs reçus par WhatsApp, classés par client.
             </p>
           </div>
-          <Link
-            href="/dashboard/clients"
-            style={{
-              background: 'var(--card)',
-              border: '1px solid var(--border)',
-              color: 'var(--text)',
-              fontWeight: 600,
-              fontSize: 13,
-              padding: '9px 16px',
-              borderRadius: 10,
-              textDecoration: 'none',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Gérer les clients →
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Link
+              href="/dashboard/clients"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                color: 'var(--text)',
+                fontWeight: 600,
+                fontSize: 13,
+                padding: '9px 16px',
+                borderRadius: 10,
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Gérer les clients →
+            </Link>
+            {CLERK_ENABLED && (
+              <>
+                <OrganizationSwitcher
+                  hidePersonal
+                  afterSelectOrganizationUrl="/dashboard"
+                  appearance={{ elements: { rootBox: { display: 'flex' } } }}
+                />
+                <UserButton afterSignOutUrl="/" />
+              </>
+            )}
+          </div>
         </div>
 
         {/* KPIs */}
