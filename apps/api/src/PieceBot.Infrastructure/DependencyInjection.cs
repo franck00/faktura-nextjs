@@ -6,6 +6,7 @@ using PieceBot.Infrastructure.Billing;
 using PieceBot.Infrastructure.Cosmos;
 using PieceBot.Infrastructure.Exports;
 using PieceBot.Infrastructure.Messaging;
+using PieceBot.Infrastructure.Ocr;
 using PieceBot.Infrastructure.Repositories;
 
 namespace PieceBot.Infrastructure;
@@ -59,6 +60,17 @@ public static class DependencyInjection
         {
             services.AddSingleton<IWhatsAppSender, StubWhatsAppSender>();
             services.AddSingleton<IWhatsAppMediaStore, StubWhatsAppMediaStore>();
+        }
+
+        // OCR : Azure Document Intelligence si Endpoint+Key configurés, sinon no-op.
+        if (!string.IsNullOrWhiteSpace(configuration["DocumentIntelligence:Endpoint"])
+            && !string.IsNullOrWhiteSpace(configuration["DocumentIntelligence:Key"]))
+        {
+            services.AddSingleton<IReceiptExtractor, AzureDocumentIntelligenceExtractor>();
+        }
+        else
+        {
+            services.AddSingleton<IReceiptExtractor, NoOpReceiptExtractor>();
         }
 
         // Passerelle paiement : stub (Mobile Money africain plus tard — Stripe indispo).

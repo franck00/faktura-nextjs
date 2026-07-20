@@ -61,7 +61,7 @@ public sealed class MetaWhatsAppMediaStore : IWhatsAppMediaStore
         var key = $"{tenantId}/{month}/{mediaId}.{ext}";
         await _store.SaveAsync(key, bytes, effectiveMime, fileName, cancellationToken);
 
-        return new StoredMedia($"/api/media/{key}", effectiveMime, fileName);
+        return new StoredMedia($"/api/media/{key}", effectiveMime, fileName, key);
     }
 
     private async Task<T?> GetWithAuthAsync<T>(string url, CancellationToken cancellationToken)
