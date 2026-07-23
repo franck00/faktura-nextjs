@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using PieceBot.Core;
 using PieceBot.Infrastructure;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,6 +66,8 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    // UI d'exploration de l'API (façon Swagger) : http://localhost:5221/scalar/v1
+    app.MapScalarApiReference();
 }
 
 // Pas de redirection HTTPS en dev : le frontend Next (http://localhost:3000)
