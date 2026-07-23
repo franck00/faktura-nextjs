@@ -67,7 +67,13 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// Pas de redirection HTTPS en dev : le frontend Next (http://localhost:3000)
+// appelle l'API en http://localhost:5221 ; rediriger vers https casserait le
+// fetch (certificat dev non approuvé par le navigateur).
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors(WebCorsPolicy);
 if (!string.IsNullOrWhiteSpace(clerkAuthority))
 {
