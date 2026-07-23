@@ -24,12 +24,16 @@ public sealed class TenantsController : ControllerBase
         _service = service;
     }
 
-    /// <summary>GET /api/tenants/me — informations du cabinet courant.</summary>
+    /// <summary>
+    /// GET /api/tenants/me — cabinet courant. Le crée au 1er accès s'il n'existe
+    /// pas encore (onboarding automatique d'une nouvelle organisation Clerk).
+    /// </summary>
     [HttpGet("me")]
     public async Task<ActionResult<Tenant>> Me(CancellationToken cancellationToken)
     {
-        var tenant = await _service.GetAsync(TenantId, cancellationToken);
-        return tenant is null ? NotFound(new { error = "Cabinet introuvable" }) : Ok(tenant);
+        var tenant = await _service.EnsureProvisionedAsync(
+            TenantId, HttpContext.GetTenantName(), HttpContext.GetUserId(), cancellationToken);
+        return Ok(tenant);
     }
 
     /// <summary>PUT /api/tenants/me — met à jour le cabinet courant.</summary>

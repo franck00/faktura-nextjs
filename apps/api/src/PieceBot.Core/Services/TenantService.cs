@@ -18,6 +18,43 @@ public sealed class TenantService : ITenantService
         return _repository.GetAsync(tenantId, cancellationToken);
     }
 
+    public async Task<Tenant> EnsureProvisionedAsync(
+        string tenantId,
+        string displayName,
+        string ownerUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var existing = await _repository.GetAsync(tenantId, cancellationToken);
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        var name = string.IsNullOrWhiteSpace(displayName) ? "Mon cabinet" : displayName.Trim();
+        var tenant = new Tenant
+        {
+            Id = tenantId,
+            TenantId = tenantId,
+            Name = name,
+            Country = "CM",
+            Currency = "XAF",
+            VatRate = 19.25m,
+            SubscriptionStatus = SubscriptionStatus.Trialing,
+            SubscriptionPlan = SubscriptionPlan.Standard,
+            TrialEndsAt = DateTimeOffset.UtcNow.AddDays(14),
+            CreatedAt = DateTimeOffset.UtcNow,
+            Owner = new TenantOwner
+            {
+                UserId = string.IsNullOrWhiteSpace(ownerUserId) ? tenantId : ownerUserId,
+                Email = string.Empty,
+                FullName = name
+            }
+        };
+
+        await _repository.CreateAsync(tenant, cancellationToken);
+        return tenant;
+    }
+
     public async Task<Tenant?> UpdateAsync(Tenant tenant, CancellationToken cancellationToken = default)
     {
         Validate(tenant);

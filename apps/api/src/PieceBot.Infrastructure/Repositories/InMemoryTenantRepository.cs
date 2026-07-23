@@ -51,4 +51,10 @@ public sealed class InMemoryTenantRepository : ITenantRepository
         _tenants[tenant.TenantId] = tenant;
         return Task.FromResult<Tenant?>(tenant);
     }
+
+    public Task CreateAsync(Tenant tenant, CancellationToken cancellationToken = default)
+    {
+        _tenants[tenant.TenantId] = tenant;
+        return Task.CompletedTask;
+    }
 }

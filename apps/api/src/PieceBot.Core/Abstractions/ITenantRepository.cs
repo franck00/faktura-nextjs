@@ -24,4 +24,7 @@ public interface ITenantRepository
         CancellationToken cancellationToken = default);
 
     Task<Tenant?> UpdateAsync(Tenant tenant, CancellationToken cancellationToken = default);
+
+    /// <summary>Crée un cabinet (onboarding : 1er login d'une organisation Clerk).</summary>
+    Task CreateAsync(Tenant tenant, CancellationToken cancellationToken = default);
 }

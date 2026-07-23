@@ -27,6 +27,15 @@ public static class TenantResolution
     /// <summary>Identifiant de l'utilisateur Clerk (claim <c>sub</c>), sinon fallback.</summary>
     public static string GetUserId(this HttpContext context) =>
         context.User.FindFirst("sub")?.Value ?? FallbackUserId;
+
+    /// <summary>
+    /// Nom lisible du cabinet pour l'onboarding : nom d'organisation Clerk
+    /// (<c>org_name</c>) ou son slug, sinon un libellé par défaut.
+    /// </summary>
+    public static string GetTenantName(this HttpContext context) =>
+        context.User.FindFirst("org_name")?.Value
+        ?? context.User.FindFirst("org_slug")?.Value
+        ?? "Mon cabinet";
 }
 
 /// <summary>

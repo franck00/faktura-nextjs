@@ -87,4 +87,10 @@ public sealed class CosmosTenantRepository : ITenantRepository
             tenant, new PartitionKey(tenant.TenantId), cancellationToken: cancellationToken);
         return response.Resource;
     }
+
+    public async Task CreateAsync(Tenant tenant, CancellationToken cancellationToken = default)
+    {
+        await _container.UpsertItemAsync(
+            tenant, new PartitionKey(tenant.TenantId), cancellationToken: cancellationToken);
+    }
 }

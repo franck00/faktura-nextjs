@@ -11,6 +11,17 @@ public interface ITenantService
 {
     Task<Tenant?> GetAsync(string tenantId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Renvoie le cabinet, en le créant s'il n'existe pas encore (onboarding au
+    /// 1er login d'une organisation Clerk). Valeurs par défaut Cameroun/XAF ;
+    /// le numéro WhatsApp se lie ensuite via <see cref="LinkWhatsappAsync"/>.
+    /// </summary>
+    Task<Tenant> EnsureProvisionedAsync(
+        string tenantId,
+        string displayName,
+        string ownerUserId,
+        CancellationToken cancellationToken = default);
+
     Task<Tenant?> UpdateAsync(Tenant tenant, CancellationToken cancellationToken = default);
 
     /// <summary>Lie le numéro WhatsApp Business du cabinet (spec §5.1 / §6.2).</summary>
